@@ -76,6 +76,8 @@ bean-sieve completion fish > ~/.config/fish/completions/bean-sieve.fish
 | `jd`     | 京东支付 | CSV        | 京东交易流水导出文件                              |
 | `meituan` | 美团    | CSV        | 美团交易账单明细导出文件                          |
 | `wechat` | 微信支付 | CSV / XLSX | 微信支付账单流水文件                              |
+| `xiaoxing`   | 小星记账       | XLS  | 小星记账「全部账本」导出文件 |
+| `xiaoxing_backup` | 小星记账备份 | LCH | 小星记账 App 的 `.lch` 加密备份文件，也可传备份目录自动读取最新一份 |
 
 ### 信用卡
 
@@ -259,6 +261,7 @@ rules:
 | 平台 | 下载方式 | 备注 |
 | :--- | :--- | :--- |
 | Apple | [Report a Problem](https://reportaproblem.apple.com) | 登录后 F12 打开控制台，滚动加载完后导出 search 请求为 HAR |
+| 小星记账 | App 内「设置 → 导出数据 → 全部账本 XLS」 | 导出后传到电脑，文件名形如 `小星记账_全部账本_YYYYMMDDHHMMSS.xls` |
 
 ## 信用卡账单管理方式
 
@@ -283,6 +286,8 @@ rules:
 | `jd` | `method`, `transaction_type`, `transaction_status`, `transaction_category`, `merchant_order_id`, `notes`, `refund_amount` |
 | `meituan` | `tx_type`, `method`, `merchant_id`, `remarks`, `order_amount` |
 | `app_store` | `media_type`, `item_id`, `adam_id` |
+| `xiaoxing` | `book`, `category`, `method`, `tags`, `remark`, `merchant`, `rebate`, `rebate_currency`, `refund`, `refund_account`, `reimburse`, `transfer_type`, `transfer_peer` |
+| `xiaoxing_backup` | `book`, `category`, `method`, `remark`, `rebate`, `rebate_currency`, `refund`, `refund_account`, `include` |
 
 ### 信用卡
 

@@ -21,9 +21,15 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 - **返利账户可配置**：红包抵扣信用卡还款的总额匹配不再只认 `Income:Rebate:`，改由 `defaults.rebate_account_prefixes` 指定（默认 `["Income:Rebate:"]`，含子账户），`account_mappings` 的 `rebate_account` 与 Provider 的 `rebate_income_account` 自动并入。此前返利记在其他账户（如 `Income:Cashback:`）的账本无法匹配，该行被报为 Missing
 
 - **借记卡账单覆盖范围**：农行、中行、交行、建行、兴业、工行、招行、平安的借记卡流水改按单卡账单处理：一份流水只覆盖它自己那张卡、按该卡首末交易日期定范围。此前同一 Provider 下配置的其他卡的账本条目也会被报为 Extra，卡间转账只要一侧流水有记录，另一侧的腿就被豁免
+- **小星记账备份的时间戳 id 实体**：对象 id 超过 2³² 的实体（`AccountBookEntity` 账本、`CycleEntity` 周期）在 LMDB 中使用 12 字节键（键首第 4 字节的宽度位为 1）。`_xxbackup.Lmdb.objects()` 此前只匹配 8 字节键，这些实体的记录被整体丢弃，`metadata.book` 缺失、按账本分类失效，现已按 `entity_id << 2 | width` 同时匹配两种键长。另 `AccountBookEntity.isDelete` 的属性 id 是 4（其余实体如账户、币种为 13），此前账本被一律误判为已删除而过滤
 ### 其他
 
 - Release workflow 升级到 `softprops/action-gh-release@v3`（runtime 由 Node 20 换为 Node 24，输入参数不变）
+
+### 新增
+
+- **小星记账备份解析**：新增 `xiaoxing_backup` Provider，直接解析小星记账 App 导出的 `.lch` 加密备份（WinZip AES + ObjectBox/LMDB，全部内存内解密，无需 App 或 ObjectBox 依赖）。支出、收入、转账与退款语义与 `xiaoxing` XLS Provider 一致：退款从金额中净额扣除并记录 `refund` / `refund_account`，转账拆成两条单边记录，分类经 TypeEntity/ItemTypeEntity 关联解析，优惠记入 `rebate`。metadata:`book`、`category`、`method`、`remark`、`include`
+- **小星记账备份目录**：`xiaoxing_backup` 现在可以直接传入备份目录（含子目录），自动选取文件名时间戳最新的一份 `.lch`（无时间戳时按修改时间）。此前必须指定具体备份文件，备份目录里积累多份文件时每次都要手动挑最新的一份
 
 ## [0.7.0] - 2026-09-04
 

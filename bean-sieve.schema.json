@@ -104,7 +104,13 @@
               "balance_currency",
               "order_amount",
               "fx_ref",
-              "transaction_date"
+              "transaction_date",
+              "book",
+              "tags",
+              "transfer_type",
+              "transfer_peer",
+              "refund_account",
+              "reimburse"
             ]
           },
           "examples": [
@@ -304,6 +310,14 @@
           "description": "微信支付",
           "allOf": [{ "$ref": "#/$defs/providerConfig" }, { "properties": { "output_metadata": { "items": { "enum": ["tx_type", "method", "status", "merchant_id", "remarks", "order_type", "commission", "rebate", "rebate_currency"] } } } }]
         },
+        "xiaoxing": {
+          "description": "小星记账",
+          "allOf": [{ "$ref": "#/$defs/providerConfig" }, { "properties": { "output_metadata": { "items": { "enum": ["book", "category", "method", "tags", "remark", "merchant", "rebate", "rebate_currency", "refund", "refund_account", "reimburse", "transfer_type", "transfer_peer"] } } } }]
+        },
+        "xiaoxing_backup": {
+          "description": "小星记账备份",
+          "allOf": [{ "$ref": "#/$defs/providerConfig" }, { "properties": { "output_metadata": { "items": { "enum": ["book", "category", "method", "tags", "remark", "rebate", "rebate_currency", "refund", "refund_account", "reimburse", "include", "link", "original_amount", "original_currency", "transfer_type", "transfer_peer"] } } } }]
+        },
         "abc_credit": { "$ref": "#/$defs/providerConfig", "description": "农业银行信用卡" },
         "boc_credit": {
           "description": "中国银行信用卡",
@@ -431,6 +445,38 @@
           "type": "object",
           "description": "Pattern to account mapping. For payment platforms: pattern matches metadata['method']. For bank cards: pattern matches card_last4. These accounts also define the coverage scope for Extra calculation.",
           "additionalProperties": { "type": "string" }
+        },
+        "field_map": {
+          "type": "object",
+          "description": "Rename and/or remap metadata fields for output. Key = source metadata key (e.g. book); value = {target_field: output field name (omit to keep the source key), values: {source value: output value}, default: fallback for unlisted values}. When default is omitted, unlisted values pass through unchanged.",
+          "additionalProperties": {
+            "type": "object",
+            "properties": {
+              "target_field": {
+                "type": "string",
+                "description": "Output metadata key. Note: Beancount metadata keys must start with a lowercase letter."
+              },
+              "values": {
+                "type": "object",
+                "description": "Optional value remap; unlisted values use default or pass through.",
+                "additionalProperties": { "type": "string" }
+              },
+              "default": {
+                "type": "string",
+                "description": "Fallback value for source values not listed in values. Omit to pass unlisted values through unchanged."
+              }
+            },
+            "additionalProperties": false
+          },
+          "examples": [
+            {
+              "book": {
+                "target_field": "cost_owner",
+                "values": { "共同账户": "family" },
+                "default": "personal"
+              }
+            }
+          ]
         },
         "output_metadata": {
           "type": "array",

@@ -7,7 +7,12 @@ from pathlib import Path
 from typing import TypeVar
 
 from ..core.types import Transaction
+from ._xlrd_compat import patch_xlrd_missing_xf
 from .base import BaseProvider
+
+# 小星记账 exports reference more XFs than they define, crashing stock xlrd
+# during ANY provider's can_handle/parse. Patch once at package import.
+patch_xlrd_missing_xf()
 
 _P = TypeVar("_P", bound=BaseProvider)
 
@@ -200,7 +205,14 @@ from .banks.debit import (  # noqa: E402, F401
 
 # from .banks.credit import ccb, abc, cib, cmb, bosc, cgb, cmbc
 # from .banks.debit import abc, cmb, bocom
-from .payment import alipay, app_store, jd, meituan, wechat  # noqa: E402, F401
+from .payment import (  # noqa: E402, F401
+    alipay,
+    app_store,
+    jd,
+    meituan,
+    wechat,
+    xiaoxing,
+)
 
 # from .crypto import binance, okx
 

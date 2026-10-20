@@ -38,6 +38,140 @@ def test_check_scope_empty_when_no_config():
     assert scope("Liabilities:Credit:HXB") is False
 
 
+def test_field_map_renames_and_remaps_metadata():
+    from datetime import date
+    from decimal import Decimal
+
+    from bean_sieve.api import _apply_provider_output_config
+    from bean_sieve.config.schema import Config, FieldMapping, ProviderConfig
+    from bean_sieve.core.types import Transaction
+
+    cfg = Config(
+        providers={
+            "xiaoxing_backup": ProviderConfig(
+                field_map={
+                    "book": FieldMapping(
+                        target_field="book_label", values={"日常": "个人"}
+                    )
+                }
+            )
+        }
+    )
+    txns = [
+        Transaction(
+            date=date(2030, 1, 2),
+            amount=Decimal("10.00"),
+            currency="CNY",
+            description="d",
+            provider="xiaoxing_backup",
+            metadata={"book": "日常"},
+        ),
+        Transaction(
+            date=date(2030, 1, 2),
+            amount=Decimal("10.00"),
+            currency="CNY",
+            description="d",
+            provider="xiaoxing_backup",
+            metadata={"book": "其他"},
+        ),
+    ]
+    renamed, passthrough = _apply_provider_output_config(txns, cfg)
+    assert renamed.metadata == {"book_label": "个人"}
+    assert passthrough.metadata == {"book_label": "其他"}
+
+
+def test_field_map_without_target_field_keeps_source_name():
+    from datetime import date
+    from decimal import Decimal
+
+    from bean_sieve.api import _apply_provider_output_config
+    from bean_sieve.config.schema import Config, FieldMapping, ProviderConfig
+    from bean_sieve.core.types import Transaction
+
+    cfg = Config(
+        providers={
+            "xiaoxing_backup": ProviderConfig(
+                field_map={"book": FieldMapping(values={"日常": "个人"})}
+            )
+        }
+    )
+    txn = Transaction(
+        date=date(2030, 1, 2),
+        amount=Decimal("10.00"),
+        currency="CNY",
+        description="d",
+        provider="xiaoxing_backup",
+        metadata={"book": "日常"},
+    )
+    [out] = _apply_provider_output_config([txn], cfg)
+    assert out.metadata == {"book": "个人"}
+
+
+def test_field_map_default_applies_to_unmapped_values():
+    from datetime import date
+    from decimal import Decimal
+
+    from bean_sieve.api import _apply_provider_output_config
+    from bean_sieve.config.schema import Config, FieldMapping, ProviderConfig
+    from bean_sieve.core.types import Transaction
+
+    cfg = Config(
+        providers={
+            "xiaoxing_backup": ProviderConfig(
+                field_map={
+                    "book": FieldMapping(
+                        target_field="cost_owner",
+                        values={"共同账户": "family"},
+                        default="personal",
+                    )
+                }
+            )
+        }
+    )
+    txns = [
+        Transaction(
+            date=date(2030, 1, 2),
+            amount=Decimal("10.00"),
+            currency="CNY",
+            description="d",
+            provider="xiaoxing_backup",
+            metadata={"book": book},
+        )
+        for book in ("共同账户", "日常账本", "上学账本")
+    ]
+    owners = [
+        txn.metadata["cost_owner"] for txn in _apply_provider_output_config(txns, cfg)
+    ]
+    assert owners == ["family", "personal", "personal"]
+
+
+def test_field_map_skips_absent_source():
+    from datetime import date
+    from decimal import Decimal
+
+    from bean_sieve.api import _apply_provider_output_config
+    from bean_sieve.config.schema import Config, FieldMapping, ProviderConfig
+    from bean_sieve.core.types import Transaction
+
+    cfg = Config(
+        providers={
+            "xiaoxing_backup": ProviderConfig(
+                field_map={"book": FieldMapping(target_field="book_label")}
+            )
+        }
+    )
+    txn = Transaction(
+        date=date(2030, 1, 2),
+        amount=Decimal("10.00"),
+        currency="CNY",
+        description="d",
+        provider="xiaoxing_backup",
+        metadata={},
+    )
+    [out] = _apply_provider_output_config([txn], cfg)
+    assert out.metadata == {}
+
+
 def test_generate_output_passes_check_scope_to_writer():
     from datetime import date
     from decimal import Decimal

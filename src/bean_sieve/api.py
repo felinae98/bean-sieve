@@ -416,6 +416,18 @@ def _apply_provider_output_config(
     for txn in transactions:
         provider_config = config.get_provider_config(txn.provider)
 
+        # Rename/remap metadata fields (e.g. book -> a custom field name/value)
+        for source_key, mapping in provider_config.field_map.items():
+            if source_key not in txn.metadata:
+                continue
+            value = txn.metadata.pop(source_key)
+            if isinstance(value, str) and (
+                mapping.values or mapping.default is not None
+            ):
+                fallback = mapping.default if mapping.default is not None else value
+                value = mapping.values.get(value, fallback)
+            txn.metadata[mapping.target_field or source_key] = value
+
         # Set posting_metadata from provider config
         if provider_config.posting_metadata:
             txn.metadata[POSTING_METADATA] = provider_config.posting_metadata

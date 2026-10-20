@@ -93,6 +93,22 @@ providers:
     accounts:
       "京东白条": Liabilities:Credit:JDBaitiao
 
+  # 小星记账：账户名走 account_mappings 匹配，无需 providers 配置；
+  # 仅在需要 output_metadata/posting_metadata/field_map 时才需要此段
+  # xiaoxing:
+  #   output_metadata: [book, category, method, tags]
+  # xiaoxing_backup:
+  #   # 把 metadata 字段重命名成自定义字段，并可选地改写取值：
+  #   #   源字段 -> { target_field: 输出字段名, values: {原值: 新值}, default: 兜底值 }
+  #   # values 未命中的原值用 default（未设则原样保留）；省略 target_field 则沿用源字段名。
+  #   # 注意：Beancount 的 metadata key 需以小写字母开头，中文键会生成非法账本。
+  #   field_map:
+  #     book:
+  #       target_field: cost_owner
+  #       values:
+  #         共同账户: family
+  #       default: personal
+
   hxb_credit:
     accounts:
       "1111": Liabilities:CreditCard:HXB

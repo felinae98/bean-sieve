@@ -109,6 +109,19 @@ class FormatConfig(BaseModel):
         return kwargs
 
 
+class FieldMapping(BaseModel):
+    """Rename and/or remap a single metadata field for output.
+
+    ``target_field`` is the output metadata key (None keeps the source key).
+    ``values`` optionally rewrites individual source values; a value absent
+    from it falls back to ``default`` when set, otherwise passes through.
+    """
+
+    target_field: str | None = None
+    values: dict[str, str] = Field(default_factory=dict)
+    default: str | None = None
+
+
 class ProviderConfig(BaseModel):
     """Provider-specific configuration."""
 
@@ -117,6 +130,9 @@ class ProviderConfig(BaseModel):
     # - Bank cards: pattern matches card_last4 (e.g., "6666" -> Assets:Bank:PAB:6666)
     # These accounts also define the coverage scope for Extra calculation during reconciliation
     accounts: dict[str, str] = Field(default_factory=dict)
+    # Rename/remap metadata fields for output: source metadata key -> mapping
+    # e.g. {"book": {"target_field": "book_label", "values": {"日常": "个人"}}}
+    field_map: dict[str, FieldMapping] = Field(default_factory=dict)
     # Additional entry-level metadata fields to output (appended to global output_metadata)
     output_metadata: list[str] = Field(default_factory=list)
     # Posting-level metadata fields to output (only at provider level)
