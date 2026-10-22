@@ -416,6 +416,10 @@ def _apply_provider_output_config(
     for txn in transactions:
         provider_config = config.get_provider_config(txn.provider)
 
+        # Constant metadata for every transaction from this provider
+        for key, value in provider_config.set_metadata.items():
+            txn.metadata[key] = value
+
         # Rename/remap metadata fields (e.g. book -> a custom field name/value)
         for source_key, mapping in provider_config.field_map.items():
             if source_key not in txn.metadata:

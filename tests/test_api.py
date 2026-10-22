@@ -145,6 +145,29 @@ def test_field_map_default_applies_to_unmapped_values():
     assert owners == ["family", "personal", "personal"]
 
 
+def test_provider_set_metadata_applied():
+    from datetime import date
+    from decimal import Decimal
+
+    from bean_sieve.api import _apply_provider_output_config
+    from bean_sieve.config.schema import Config, ProviderConfig
+    from bean_sieve.core.types import Transaction
+
+    cfg = Config(
+        providers={"cib_debit": ProviderConfig(set_metadata={"cost_owner": "personal"})}
+    )
+    txn = Transaction(
+        date=date(2030, 1, 2),
+        amount=Decimal("10.00"),
+        currency="CNY",
+        description="d",
+        provider="cib_debit",
+        metadata={},
+    )
+    [out] = _apply_provider_output_config([txn], cfg)
+    assert out.metadata["cost_owner"] == "personal"
+
+
 def test_field_map_skips_absent_source():
     from datetime import date
     from decimal import Decimal

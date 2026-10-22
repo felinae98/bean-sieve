@@ -478,6 +478,11 @@
             }
           ]
         },
+        "set_metadata": {
+          "type": "object",
+          "description": "Constant metadata applied to every transaction from this provider, e.g. {cost_owner: personal}.",
+          "additionalProperties": { "type": "string" }
+        },
         "output_metadata": {
           "type": "array",
           "description": "Additional entry-level metadata fields to output (appended to global output_metadata)",

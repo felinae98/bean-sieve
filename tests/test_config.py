@@ -88,6 +88,15 @@ def test_field_map_defaults_to_empty():
     assert Config().get_provider_config("xiaoxing_backup").field_map == {}
 
 
+def test_provider_set_metadata_parsed():
+    cfg = Config.from_dict(
+        {"providers": {"cib_debit": {"set_metadata": {"cost_owner": "personal"}}}}
+    )
+    assert cfg.get_provider_config("cib_debit").set_metadata == {
+        "cost_owner": "personal"
+    }
+
+
 def test_rebate_account_prefixes_parsed_and_merged_with_configured_accounts():
     cfg = Config.from_dict(
         {

@@ -133,6 +133,9 @@ class ProviderConfig(BaseModel):
     # Rename/remap metadata fields for output: source metadata key -> mapping
     # e.g. {"book": {"target_field": "book_label", "values": {"日常": "个人"}}}
     field_map: dict[str, FieldMapping] = Field(default_factory=dict)
+    # Constant metadata applied to every transaction from this provider
+    # e.g. {"cost_owner": "personal"}
+    set_metadata: dict[str, str] = Field(default_factory=dict)
     # Additional entry-level metadata fields to output (appended to global output_metadata)
     output_metadata: list[str] = Field(default_factory=list)
     # Posting-level metadata fields to output (only at provider level)
