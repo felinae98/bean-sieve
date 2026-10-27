@@ -28,6 +28,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/).
 
 ### 新增
 
+- **按卡号筛选**：新增 `providers.<id>.card_filter.include` / `.exclude`，在解析后、匹配前按 `card_last4` 丢弃账单行。被过滤的行不产生 Missing/pending，不参与匹配与 Extra 判定，也不会再被无约束地配到其他账户；`include` 是白名单（无卡号的行也丢弃），`exclude` 是黑名单（无卡号的行保留），两者同时配置时 `exclude` 优先。`context.parsed` 仍保留整份账单的解析结果
 - **小星记账备份解析**：新增 `xiaoxing_backup` Provider，直接解析小星记账 App 导出的 `.lch` 加密备份（WinZip AES + ObjectBox/LMDB，全部内存内解密，无需 App 或 ObjectBox 依赖）。支出、收入、转账与退款语义与 `xiaoxing` XLS Provider 一致：退款从金额中净额扣除并记录 `refund` / `refund_account`，转账拆成两条单边记录，分类经 TypeEntity/ItemTypeEntity 关联解析，优惠记入 `rebate`。metadata:`book`、`category`、`method`、`remark`、`include`
 - **小星记账备份目录**：`xiaoxing_backup` 现在可以直接传入备份目录（含子目录），自动选取文件名时间戳最新的一份 `.lch`（无时间戳时按修改时间）。此前必须指定具体备份文件，备份目录里积累多份文件时每次都要手动挑最新的一份
 

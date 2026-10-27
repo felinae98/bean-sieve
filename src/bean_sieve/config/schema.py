@@ -122,6 +122,13 @@ class FieldMapping(BaseModel):
     default: str | None = None
 
 
+class CardFilter(BaseModel):
+    """Whitelist/blacklist of card_last4 values taking part in reconciliation."""
+
+    include: list[str] | None = None
+    exclude: list[str] | None = None
+
+
 class ProviderConfig(BaseModel):
     """Provider-specific configuration."""
 
@@ -130,6 +137,9 @@ class ProviderConfig(BaseModel):
     # - Bank cards: pattern matches card_last4 (e.g., "6666" -> Assets:Bank:PAB:6666)
     # These accounts also define the coverage scope for Extra calculation during reconciliation
     accounts: dict[str, str] = Field(default_factory=dict)
+    # Drop statement rows outside this card_last4 whitelist/blacklist before
+    # matching, so they produce no Missing/Extra and never constrain matching.
+    card_filter: CardFilter | None = None
     # Rename/remap metadata fields for output: source metadata key -> mapping
     # e.g. {"book": {"target_field": "book_label", "values": {"日常": "个人"}}}
     field_map: dict[str, FieldMapping] = Field(default_factory=dict)
