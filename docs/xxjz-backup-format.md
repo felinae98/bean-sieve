@@ -363,10 +363,13 @@ Dependencies: `parse_model.py` needs the runtime dump at `/tmp/src_all`;
 in memory - AES decrypt, LMDB walk, FlatBuffer decode - and needs no
 `objectbox` package. It accepts either one `.lch` file or a backup directory;
 a directory resolves to the newest `.lch` in it, ordered by the timestamp in
-the file name and falling back to the modification time. Refund legs (rows of
-`detailType` 4 / `from` 5 tied to their parent by `cycleId`) net into the parent
-amount and feed the `refund` / `refund_account` metadata, mirroring the
-`xiaoxing` XLS provider.
+the file name and falling back to the modification time. A refunded payment
+keeps its gross `amount`; each refund leg (rows of `detailType` 4 / `from` 5
+tied to their parent by `cycleId`) becomes its own opposite-sign transaction,
+dated and accounted per the leg and carrying the parent's category so the rules
+reduce the same expense. The parent keeps `refund` / `refund_account` metadata
+and the leg carries `refund_of` (parent row id), so both the original payment
+and the refund stay matchable against statement rows.
 
 Foreign-currency rows store the book-currency amount in `amount` (property 4)
 and the pre-conversion amount in `currencyAmount` (property 33). The provider

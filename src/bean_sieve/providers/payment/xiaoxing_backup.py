@@ -3,7 +3,10 @@
 A .lch file is the app encrypted backup (WinZip AES, hard-coded password)
 wrapping an ObjectBox/LMDB database; _xxbackup peels those layers.
 Transactions mirror the XLS provider semantics: expense positive, income
-negative; refunds net into the amount; transfers become two one-sided rows.
+negative; transfers become two one-sided rows. A refunded payment keeps its
+gross amount and each refund leg (``detailType`` 4 / ``from`` 5) becomes its
+own opposite-sign row dated when the refund happened, so both the original
+payment and the refund stay matchable against statement rows.
 Foreign-currency rows carry the book-currency amount as the transaction amount
 and the pre-conversion amount in ``original_amount`` / ``original_currency``.
 """
@@ -135,42 +138,39 @@ class XiaoxingBackupProvider(BaseProvider):
             row_id: xb.decode_object(raw, DETAIL_PROPS)
             for row_id, raw in db.objects(DETAIL_ENTITY).items()
         }
-        refund_legs: dict[int, list[dict]] = {}
-        for row in details.values():
+        refund_legs: dict[int, list[tuple[int, dict]]] = {}
+        for leg_id, row in details.items():
             if self._is_refund_leg(row):
-                refund_legs.setdefault(row.get("cycleId") or 0, []).append(row)
+                refund_legs.setdefault(row.get("cycleId") or 0, []).append(
+                    (leg_id, row)
+                )
         transactions = []
         for row_id, row in sorted(details.items()):
             if row.get("isDelete") or row.get("isPre"):
                 continue
             kind = row.get("detailType")
-            tx = None
             if kind == TYPE_EXPENSE:
-                tx = self._expense_like(
-                    row,
-                    row_id,
-                    1,
-                    accounts,
-                    books,
-                    currencies,
-                    refund_legs.get(row_id, []),
-                )
+                sign = 1
             elif kind == TYPE_INCOME:
+                sign = -1
+            else:
+                sign = 0
+            if sign:
+                legs = refund_legs.get(row_id, [])
                 tx = self._expense_like(
-                    row,
-                    row_id,
-                    -1,
-                    accounts,
-                    books,
-                    currencies,
-                    refund_legs.get(row_id, []),
+                    row, row_id, sign, accounts, books, currencies, legs
+                )
+                if tx is not None:
+                    transactions.append(tx)
+                transactions.extend(
+                    self._refund_leg_txs(
+                        row, row_id, sign, legs, accounts, books, currencies
+                    )
                 )
             elif kind == TYPE_TRANSFER:
                 transactions.extend(
                     self._transfer_legs(row, row_id, accounts, books, currencies)
                 )
-            if tx is not None:
-                transactions.append(tx)
         return transactions
 
     @staticmethod
@@ -207,9 +207,7 @@ class XiaoxingBackupProvider(BaseProvider):
         book_currency = self._book_currency(row, currencies)
         foreign = self._foreign_original(row, currencies, book_currency)
         refund = self._dec(row.get("refundAmount"))
-        net = amount - refund if refund else amount
-        if net == 0:
-            return None
+        net = amount
         if sign < 0:
             net = -net
         account = accounts.get(row.get("accountId"), "")
@@ -242,7 +240,9 @@ class XiaoxingBackupProvider(BaseProvider):
             metadata[ORIGINAL_CURRENCY] = self._currency_of(row, currencies)
         if refund:
             metadata["refund"] = str(refund)
-            leg_accounts = [accounts.get(leg.get("accountId"), "") for leg in legs]
+            leg_accounts = [
+                accounts.get(leg.get("accountId"), "") for _leg_id, leg in legs
+            ]
             leg_accounts = [a for a in leg_accounts if a]
             if leg_accounts:
                 metadata["refund_account"] = leg_accounts[0]
@@ -259,6 +259,56 @@ class XiaoxingBackupProvider(BaseProvider):
             source_line=row_id,
             metadata=metadata,
         )
+
+    def _refund_leg_txs(self, row, row_id, sign, legs, accounts, books, currencies):
+        """Emit one opposite-sign row per refund leg.
+
+        The refund carries its own date and receiving account; the original
+        category is reused so the existing rules classify it as a reduction of
+        the same expense. The parent keeps its gross amount, so the pair nets
+        to the refunded total while both statement rows stay matchable.
+        """
+        if not legs:
+            return []
+        book_currency = self._book_currency(row, currencies)
+        description = _join_category(
+            row.get("typeName") or "", row.get("itemTypeName") or ""
+        )
+        book = books.get(row.get("accountBookId"))
+        payee = row.get("shopName") or None
+        result = []
+        for leg_id, leg in legs:
+            amount = self._dec(leg.get("amount"))
+            if amount is None or amount == 0:
+                continue
+            account = accounts.get(leg.get("accountId"), "")
+            if not account:
+                continue
+            dt = self._row_time(leg)
+            metadata = {"method": account, "refund_of": str(row_id)}
+            if description:
+                metadata["category"] = description
+            if book:
+                metadata["book"] = book
+            if remark := leg.get("remark"):
+                metadata["remark"] = remark
+            if link := self._links.get(leg.get("linkId")):
+                metadata["link"] = link
+            result.append(
+                Transaction(
+                    date=dt.date(),
+                    time=dt.time(),
+                    payee=payee,
+                    amount=-sign * amount,
+                    currency=book_currency,
+                    description=description or "退款",
+                    provider=self.provider_id,
+                    source_file=self._source,
+                    source_line=leg_id,
+                    metadata=metadata,
+                )
+            )
+        return result
 
     def _transfer_legs(self, row, row_id, accounts, books, currencies):
         amount = self._dec(row.get("amount"))

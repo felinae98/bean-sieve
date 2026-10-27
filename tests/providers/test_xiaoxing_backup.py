@@ -256,6 +256,10 @@ def backup_file(tmp_path: Path) -> Path:
         _refund_leg(103, 104, 2, 5.0),
         _obj_key(6, 105),
         _expense(105, 0.0, 1),
+        _obj_key(6, 106),
+        _expense(106, 12.0, 1, extra={25: ("f", 12.0)}),
+        _obj_key(6, 107),
+        _refund_leg(106, 107, 1, 12.0),
     ]
     path = tmp_path / "backup.lch"
     path.write_bytes(_encrypt(_backup(rows)))
@@ -290,12 +294,27 @@ def test_parse_expense_income_transfer(backup_file):
     assert in_leg.metadata["transfer_peer"] == "银行卡甲"
 
 
-def test_refund_nets_and_meta(backup_file):
+def test_refund_leg_emitted(backup_file):
     txs = XiaoxingBackupProvider().parse(backup_file)
-    refunded = next(t for t in txs if t.source_line == 103)
-    assert refunded.amount == Decimal("25")
-    assert refunded.metadata["refund"] == "5.0"
-    assert refunded.metadata["refund_account"] == "钱包乙"
+    by_id = {}
+    for t in txs:
+        by_id.setdefault(t.source_line, []).append(t)
+    original = by_id[103][0]
+    assert original.amount == Decimal("30")
+    assert original.metadata["refund"] == "5.0"
+    assert original.metadata["refund_account"] == "钱包乙"
+    leg = by_id[104][0]
+    assert leg.amount == Decimal("-5.0")
+    assert leg.description == "餐饮:午餐"
+    assert leg.metadata["method"] == "钱包乙"
+    assert leg.metadata["refund_of"] == "103"
+
+
+def test_full_refund_keeps_both_sides(backup_file):
+    txs = XiaoxingBackupProvider().parse(backup_file)
+    by_id = {t.source_line: t for t in txs}
+    assert by_id[106].amount == Decimal("12")
+    assert by_id[107].amount == Decimal("-12")
 
 
 def test_zero_amount_dropped(backup_file):
